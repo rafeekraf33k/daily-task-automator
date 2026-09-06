@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Task Automator</title>
+  <meta name="description" content="Free 24/7 task reminder automation with phone notifications">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+  <style>
+  :root {
+    --ground: #1a1a2e;
+    --surface: #16213e;
+    --surface-hover: #0f3460;
+    --accent: #4a90e2;
+    --success: #53c28b;
+    --warning: #f39c12;
+    --text: #f4f4f9;
+    --text-dim: #a0a0b0;
+    --text-muted: #6b6b7b;
+    --border: #2a2a3e;
+    --input-bg: #0d1117;
+  }
+
+  @media (prefers-color-scheme: light):root:not([data-theme="dark"]) {
+    --ground: #f8f9fa;
+    --surface: #ffffff;
+    --surface-hover: #f0f1f3;
+    --accent: #2563eb;
+    --success: #059669;
+    --warning: #d97706;
+    --text: #1a1a2e;
+    --text-dim: #4a4a5a;
+    --text-muted: #8a8a9a;
+    --border: #e5e7eb;
+    --input-bg: #f9fafb;
+  }
+
+  :root[data-theme="light"] {
+    --ground: #f8f9fa;
+    --surface: #ffffff;
+    --surface-hover: #f0f1f3;
+    --accent: #2563eb;
+    --success: #059669;
+    --warning: #d97706;
+    --text: #1a1a2e;
+    --text-dim: #4a4a5a;
+    --text-muted: #8a8a9a;
+    --border: #e5e7eb;
+    --input-bg: #f9fafb;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--ground);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+  }
+
+  .header-content {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .live-clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.125rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  main {
+    flex: 1;
+    padding: 2rem 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .notification-setup {
+    background: linear-gradient(135deg, var(--accent) 0%, #3a7bc8 100%);
+    color: white;
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .notification-setup p {
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+
+  .notification-setup button {
+    background: white;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .notification-setup.hidden {
+    display: none;
+  }
+
+  .add-task-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.625rem 0.875rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9375rem;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 60px;
+  }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.625rem 1.25rem;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  button:hover {
+    opacity: 0.9;
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .btn-danger {
+    background: #e74c3c;
+  }
+
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+
+  .task-card:hover {
+    border-color: var(--accent);
+  }
+
+  .task-card.completed {
+    opacity: 0.6;
+  }
+
+  .task-checkbox {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+  }
+
+  .task-content {
+    flex: 1;
+  }
+
+  .task-title {
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .task-card.completed .task-title {
+    text-decoration: line-through;
+  }
+
+  .task-desc {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .task-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-icon {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .btn-icon:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .status-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+  }
+
+  .status-bar strong {
+    color: var(--text);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+  }
+
+  .empty-state svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+
+  @media (max-width: 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+
+    .header-content {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .notification-setup {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1>⏰ Daily Task Automator</h1>
+      <div class="live-clock" id="liveClock">Loading...</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="notification-setup" id="notificationBanner">
+      <p>📱 <strong>Enable notifications</strong> to receive task reminders on your phone</p>
+      <button onclick="enableNotifications()">Enable Now</button>
+    </div>
+
+    <div class="add-task-form">
+      <div class="form-grid">
+        <div>
+          <label for="taskTitle">Task Name</label>
+          <input type="text" id="taskTitle" placeholder="What do you need to do?" required>
+        </div>
+
+        <div>
+          <label for="taskDesc">Description (optional)</label>
+          <textarea id="taskDesc" placeholder="Add more details..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="taskTime">Reminder Time</label>
+            <input type="time" id="taskTime" required>
+          </div>
+          <div>
+            <label for="taskRepeat">Repeat</label>
+            <select id="taskRepeat">
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays</option>
+              <option value="weekends">Weekends</option>
+              <option value="once">Once</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="addTask()">➕ Add Task</button>
+      </div>
+    </div>
+
+    <div class="tasks-list" id="tasksList"></div>
+
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <p>No tasks yet. Add your first reminder above.</p>
+    </div>
+  </main>
+
+  <div class="status-bar" id="statusBar">
+    Ready to manage your tasks
+  </div>
+
+  <script>
+  // Task storage and state
+  let tasks = [];
+  let notificationPermission = 'default';
+  let nextCheckTimeout = null;
+
+  // Initialize
+  function init() {
+    loadTasks();
+    updateClock();
+    setInterval(updateClock, 1000);
+    checkNotificationPermission();
+    renderTasks();
+    scheduleNextCheck();
+  }
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    document.getElementById('liveClock').textContent = timeStr;
+  }
+
+  // Notification permission
+  function checkNotificationPermission() {
+    if ('Notification' in window) {
+      notificationPermission = Notification.permission;
+      if (notificationPermission === 'granted') {
+        document.getElementById('notificationBanner').classList.add('hidden');
+      }
+    }
+  }
+
+  function enableNotifications() {
+    if (!('Notification' in window)) {
+      alert('Your browser does not support notifications. Try Chrome, Firefox, or Safari.');
+      return;
+    }
+
+    Notification.requestPermission().then(permission => {
+      notificationPermission = permission;
+      if (permission === 'granted') {
+        document.getElementById('notificationBanner').classList.add('hidden');
+        showNotification('Notifications Enabled', 'You will now receive task reminders!');
+        updateStatus('✅ Notifications enabled');
+      } else {
+        alert('Please enable notifications in your browser settings to receive reminders.');
+      }
+    });
+  }
+
+  function showNotification(title, body, tag) {
+    if (notificationPermission === 'granted') {
+      try {
+        const notification = new Notification(title, {
+          body: body,
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">⏰</text></svg>',
+          tag: tag || 'task-reminder',
+          requireInteraction: true
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      } catch(e) {
+        console.error('Notification failed:', e);
+      }
+    }
+  }
+
+  // Task management
+  function loadTasks() {
+    try {
+      const stored = localStorage.getItem('dailyTasks');
+      if (stored) {
+        tasks = JSON.parse(stored);
+      }
+    } catch(e) {
+      tasks = [];
+    }
+  }
+
+  function saveTasks() {
+    try {
+      localStorage.setItem('dailyTasks', JSON.stringify(tasks));
+    } catch(e) {
+      console.error('Could not save tasks:', e);
+    }
+  }
+
+  function addTask() {
+    const title = document.getElementById('taskTitle').value.trim();
+    const desc = document.getElementById('taskDesc').value.trim();
+    const time = document.getElementById('taskTime').value;
+    const repeat = document.getElementById('taskRepeat').value;
+
+    if (!title || !time) {
+      alert('Please fill in task name and time');
+      return;
+    }
+
+    const task = {
+      id: Date.now(),
+      title,
+      desc,
+      time,
+      repeat,
+      completed: false,
+      lastNotified: null
+    };
+
+    tasks.push(task);
+    saveTasks();
+    renderTasks();
+
+    // Clear form
+    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('taskTime').value = '';
+    document.getElementById('taskRepeat').value = 'daily';
+
+    updateStatus(`✅ Added "${title}"`);
+    scheduleNextCheck();
+  }
+
+  function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      task.completed = !task.completed;
+      saveTasks();
+      renderTasks();
+      updateStatus(task.completed ? `✓ Completed "${task.title}"` : `Uncompleted "${task.title}"`);
+    }
+  }
+
+  function deleteTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task && confirm(`Delete "${task.title}"?`)) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveTasks();
+      renderTasks();
+      updateStatus(`🗑️ Deleted "${task.title}"`);
+      scheduleNextCheck();
+    }
+  }
+
+  function renderTasks() {
+    const container = document.getElementById('tasksList');
+    const emptyState = document.getElementById('emptyState');
+
+    if (tasks.length === 0) {
+      container.innerHTML = '';
+      emptyState.style.display = 'block';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+
+    // Sort by time
+    const sorted = [...tasks].sort((a, b) => a.time.localeCompare(b.time));
+
+    container.innerHTML = sorted.map(task => `
+      <div class="task-card ${task.completed ? 'completed' : ''}">
+        <input
+          type="checkbox"
+          class="task-checkbox"
+          ${task.completed ? 'checked' : ''}
+          onchange="toggleTask(${task.id})"
+        >
+        <div class="task-content">
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          ${task.desc ? `<div class="task-desc">${escapeHtml(task.desc)}</div>` : ''}
+          <div class="task-meta">
+            <span>🕐 ${task.time}</span>
+            <span>🔁 ${task.repeat}</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-icon btn-danger" onclick="deleteTask(${task.id})">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Reminder checking
+  function scheduleNextCheck() {
+    if (nextCheckTimeout) {
+      clearTimeout(nextCheckTimeout);
+    }
+
+    const now = new Date();
+    const nextMinute = new Date(now);
+    nextMinute.setSeconds(0);
+    nextMinute.setMilliseconds(0);
+    nextMinute.setMinutes(nextMinute.getMinutes() + 1);
+
+    const msUntilNext = nextMinute - now;
+
+    nextCheckTimeout = setTimeout(() => {
+      checkReminders();
+      scheduleNextCheck();
+    }, msUntilNext);
+
+    updateNextReminderStatus();
+  }
+
+  function checkReminders() {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+    tasks.forEach(task => {
+      if (task.completed) return;
+      if (task.time !== currentTime) return;
+
+      // Check repeat rules
+      let shouldNotify = false;
+      switch(task.repeat) {
+        case 'daily':
+          shouldNotify = true;
+          break;
+        case 'weekdays':
+          shouldNotify = dayOfWeek >= 1 && dayOfWeek <= 5;
+          break;
+        case 'weekends':
+          shouldNotify = dayOfWeek === 0 || dayOfWeek === 6;
+          break;
+        case 'once':
+          shouldNotify = !task.lastNotified;
+          break;
+      }
+
+      if (shouldNotify) {
+        showNotification(
+          `⏰ Reminder: ${task.title}`,
+          task.desc || 'Time to complete this task!',
+          `task-${task.id}`
+        );
+        task.lastNotified = now.toISOString();
+        saveTasks();
+      }
+    });
+  }
+
+  function updateNextReminderStatus() {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const upcoming = tasks
+      .filter(t => !t.completed)
+      .map(t => {
+        const [h, m] = t.time.split(':').map(Number);
+        const taskMinutes = h * 60 + m;
+        const diff = taskMinutes - currentMinutes;
+        return { task: t, diff: diff >= 0 ? diff : diff + 1440 };
+      })
+      .sort((a, b) => a.diff - b.diff);
+
+    if (upcoming.length > 0) {
+      const next = upcoming[0];
+      const hours = Math.floor(next.diff / 60);
+      const mins = next.diff % 60;
+      const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      updateStatus(`⏳ Next: <strong>${next.task.title}</strong> in ${timeStr}`);
+    } else {
+      updateStatus('No upcoming reminders');
+    }
+  }
+
+  function updateStatus(html) {
+    document.getElementById('statusBar').innerHTML = html;
+  }
+
+  // Start
+  init();
+  </script>
+</body>
+</html>
