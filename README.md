@@ -61,6 +61,52 @@ python -m mt5_trader run --live
 
 Logs are written to `logs/mt5_trader.log`. Stop the bot with `Ctrl+C`. Positions you already opened keep their SL/TP on the broker's server.
 
+### Gold: XAUUSDm / XAUUSDc setup (`config.gold.yaml`)
+
+A ready-made config for gold that combines everything below: liquidity sweep + trend entries, 1,000,000 Monte Carlo paths before every trade, a $0.30 spread, and the recovery basket.
+
+```bat
+python -m mt5_trader -c config.gold.yaml download --symbol XAUUSDm --bars 50000
+:: Backtest. Use fewer MC paths here (1M per signal x hundreds of signals = slow)
+python -m mt5_trader -c config.gold.yaml backtest --csv data/XAUUSDm_M15.csv --symbol XAUUSDm --equity 1000 --mc-sims 50000
+python -m mt5_trader -c config.gold.yaml run          :: dry run, full 1M paths
+python -m mt5_trader -c config.gold.yaml run --live   :: demo first!
+```
+
+- **One account per terminal.** On Exness, `XAUUSDm` is on Standard accounts and `XAUUSDc` is on **Cent** accounts, so one login won't have both. The bot skips any symbol your account doesn't have. To run both, install MT5 twice (two folders), log each one in to its own account, and start two bots:
+  ```bat
+  set MT5_TERMINAL_PATH=C:\MT5_Standard\terminal64.exe
+  python -m mt5_trader -c config.gold.yaml run --live
+  :: second window
+  set MT5_TERMINAL_PATH=C:\MT5_Cent\terminal64.exe
+  python -m mt5_trader -c config.gold.yaml run --live
+  ```
+- **Cent accounts** show the balance in US cents (USC). Lot sizing and the basket hard stop use your account currency, so they work as-is. In a backtest, pass `--equity` in the same units.
+- Raise *Tools → Options → Charts → Max bars in chart* if `download` returns fewer bars than you asked for.
+
+### Liquidity sweep + trend (`strategy.mode: sweep_trend`)
+
+- **Swing lows/highs** are bars that are the lowest/highest of the `swing_len` bars on each side. They're where stop-losses cluster. A swing is only treated as known `swing_len` bars later, so there's no look-ahead.
+- **Buy:** the trend is up (price > EMA200 and EMA50 > EMA200) **and** a bar's wick sweeps below the last swing low (a stop hunt) but closes back above it.
+- **Sell:** the mirror image at the last swing high in a downtrend.
+
+### Monte Carlo: "run 1 million possibilities first" (`montecarlo`)
+
+Before each trade the bot simulates `n_sims` (1,000,000) possible paths for the next `horizon_bars`. It builds them by resampling random blocks of real recent bars, with their returns and wicks. For **both** a buy and a sell, with the real spread and the same SL/TP, it counts how often TP is hit before SL and computes the expected result in R. The trade is taken only if the setup's direction has the better expected value **and** that value is at least `min_edge_r`. The result is logged with every signal, for example:
+
+`MC 1,000,000 paths: BUY EV +0.120R (TP 37.4%/SL 62.6%), SELL EV -0.310R (...)`
+
+It runs in about 2 seconds. It's a statistical filter based on recent market behaviour, not a prediction of news or regime changes.
+
+### Recovery basket: add lots on reversals, close all in profit (`basket`)
+
+1. A signal opens the first position (`base_lot`).
+2. Each time price moves `step_atr × ATR` **against** the basket, another position is added in the same direction, up to `max_layers`.
+3. All positions share one take-profit at **average entry + `tp_atr × ATR`**. A small bounce closes the whole basket in profit.
+4. All positions also share one **hard stop**, placed where the basket would lose `max_basket_loss_pct` of the balance. The bot won't add a layer that would put the basket at its stop. TP and stop are set on the broker server, so they still work if your PC goes down.
+
+> ⚠️ **Basket/grid risk.** This style usually wins 85–90% of the time with small profits, then takes a rare loss that can erase many wins. In a backtest on random data it won about 90% of baskets and still lost money overall. **Always backtest it on real data and watch `largest_loss`, `hard_stops_hit` and `max_drawdown(float)`, not just the win rate.** `lot_multiplier > 1` (martingale) makes the rare loss much bigger; it's capped at 2.0 and defaults to 1.0.
+
 ### How it decides to trade (on every closed bar)
 
 | Step | Check |
@@ -89,7 +135,9 @@ mt5_trader/
   model.py       ML signal filter (train/save/load)
   strategy.py    entry rules + ML confirmation
   risk.py        position sizing, SL/TP, daily-loss guard
-  backtest.py    bar-by-bar backtester (next-bar fills, spread, SL-first)
+  montecarlo.py  1M-path Monte Carlo BUY vs SELL evaluation
+  basket.py      recovery basket math (layers, shared TP, hard stop)
+  backtest.py    bar-by-bar backtester, single-trade and basket modes
   mt5_client.py  MetaTrader5 API wrapper (orders, data, positions)
   bot.py         live loop
   __main__.py    CLI

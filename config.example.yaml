@@ -10,6 +10,7 @@ magic_number: 20261106    # identifies this bot's trades in MT5
 deviation_points: 20      # max slippage
 live: false               # false = dry run (logs signals only). Use `run --live` to trade.
 trading_hours_utc: [7, 20]
+assumed_spread: 0.0001    # spread in price units for backtests + Monte Carlo
 
 risk:
   risk_per_trade_pct: 1.0
@@ -21,6 +22,9 @@ risk:
   trailing_atr_mult: 0.0  # e.g. 2.0 to enable a trailing stop
 
 strategy:
+  mode: ema_pullback      # or sweep_trend (liquidity sweep + trend)
+  swing_len: 5
+  sweep_min_atr: 0.1
   fast_ema: 20
   slow_ema: 50
   trend_ema: 200
@@ -30,3 +34,10 @@ strategy:
   ml_min_proba: 0.55
   ml_horizon: 12
   model_path: models/model.joblib
+
+montecarlo:               # simulate future paths before each trade (see config.gold.yaml)
+  enabled: false
+  n_sims: 1000000
+
+basket:                   # recovery basket / averaging (see README before enabling)
+  enabled: false

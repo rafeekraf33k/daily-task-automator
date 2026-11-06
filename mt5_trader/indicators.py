@@ -71,7 +71,33 @@ def add_indicators(df: pd.DataFrame, s) -> pd.DataFrame:
     out["body_pct"] = (c - out["open"]) / c
     vol = out["tick_volume"].astype(float) if "tick_volume" in out else pd.Series(0.0, index=out.index)
     out["vol_z"] = ((vol - vol.rolling(50).mean()) / vol.rolling(50).std()).fillna(0.0)
+    add_liquidity_sweeps(out, s)
     hours = pd.to_datetime(out["time"]).dt.hour
     out["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     out["hour_cos"] = np.cos(2 * np.pi * hours / 24)
     return out
+
+
+def add_liquidity_sweeps(out: pd.DataFrame, s) -> None:
+    """Mark liquidity sweeps (stop hunts) in place.
+
+    A swing low is a bar whose low is the lowest of the `swing_len` bars on
+    each side. It only becomes known `swing_len` bars later, so the level is
+    shifted forward to avoid look-ahead. Stops typically rest just below swing
+    lows / above swing highs.
+
+    sweep_bull: the bar's wick pushes below the last swing low (taking those
+                stops) but the bar closes back above it -> rejection, bullish.
+    sweep_bear: the mirror image at the last swing high.
+    """
+    k = s.swing_len
+    win = 2 * k + 1
+    lo, hi, c = out["low"], out["high"], out["close"]
+    is_swing_low = lo == lo.rolling(win, center=True).min()
+    is_swing_high = hi == hi.rolling(win, center=True).max()
+    out["swing_low"] = lo.where(is_swing_low).shift(k).ffill()
+    out["swing_high"] = hi.where(is_swing_high).shift(k).ffill()
+    prev_low, prev_high = out["swing_low"].shift(1), out["swing_high"].shift(1)
+    pen = s.sweep_min_atr * out["atr"]
+    out["sweep_bull"] = ((lo < prev_low - pen) & (c > prev_low)).fillna(False)
+    out["sweep_bear"] = ((hi > prev_high + pen) & (c < prev_high)).fillna(False)

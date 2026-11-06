@@ -58,11 +58,15 @@ class RiskGuard:
             return 0.0
         return max(0.0, (self.day_start_equity - equity) / self.day_start_equity * 100)
 
-    def can_open(self, equity: float, open_positions: int, spread_points: float) -> tuple[bool, str]:
+    def can_open(self, equity: float, open_positions: int, spread_points: float,
+                 spread_price: float | None = None) -> tuple[bool, str]:
         if self.daily_loss_pct(equity) >= self.cfg.max_daily_loss_pct:
             return False, f"daily loss limit hit ({self.daily_loss_pct(equity):.2f}%)"
         if open_positions >= self.cfg.max_open_positions:
             return False, f"max open positions ({open_positions})"
-        if spread_points > self.cfg.max_spread_points:
+        if self.cfg.max_spread_price is not None and spread_price is not None:
+            if spread_price > self.cfg.max_spread_price:
+                return False, f"spread too wide ({spread_price:.3f})"
+        elif spread_points > self.cfg.max_spread_points:
             return False, f"spread too wide ({spread_points:.0f} pts)"
         return True, "ok"

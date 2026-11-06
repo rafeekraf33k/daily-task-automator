@@ -1,0 +1,53 @@
+# Gold (XAUUSD) on Exness-style symbols:
+#   XAUUSDm = Standard account, XAUUSDc = Standard Cent account.
+# One MT5 login is one account, so the bot automatically skips whichever symbol
+# your logged-in account does not have. To trade both at once, run two MT5
+# terminals (one per account) and two copies of the bot - see README.
+#
+#   python -m mt5_trader -c config.gold.yaml backtest --csv data/XAUUSDm_M15.csv --symbol XAUUSDm
+#   python -m mt5_trader -c config.gold.yaml run
+
+symbols: [XAUUSDm, XAUUSDc]
+timeframe: M15
+history_bars: 3500          # must cover montecarlo.lookback_bars + 200
+poll_seconds: 15
+magic_number: 20261107
+deviation_points: 50
+live: false
+trading_hours_utc: [1, 22]
+assumed_spread: 0.3         # gold spread in price units ($0.30), used by backtest + Monte Carlo
+
+risk:
+  risk_per_trade_pct: 1.0   # single-trade mode only
+  max_daily_loss_pct: 5.0
+  max_open_positions: 2     # in basket mode this counts baskets (one per symbol)
+  max_spread_price: 0.45    # don't open when the live spread is wider than $0.45
+  sl_atr_mult: 1.5          # also used by Monte Carlo to score BUY vs SELL
+  tp_atr_mult: 3.0
+
+strategy:
+  mode: sweep_trend         # liquidity sweep + trend following
+  swing_len: 5
+  sweep_min_atr: 0.1
+  fast_ema: 20
+  slow_ema: 50
+  trend_ema: 200
+  use_ml_filter: false      # set true after `train` if the model beats its baseline
+  model_path: models/xauusd.joblib
+
+montecarlo:
+  enabled: true
+  n_sims: 1000000           # 1 million simulated paths before every trade
+  horizon_bars: 48          # 12 hours on M15
+  lookback_bars: 3000
+  block_len: 4
+  min_edge_r: 0.05
+
+basket:
+  enabled: true             # keep adding lots when price reverses, close all in profit
+  base_lot: 0.01
+  lot_multiplier: 1.0       # equal lots. >1.0 is martingale - can blow up an account
+  max_layers: 5
+  step_atr: 1.5
+  tp_atr: 1.0
+  max_basket_loss_pct: 10.0 # hard stop for the whole basket, set on the broker server

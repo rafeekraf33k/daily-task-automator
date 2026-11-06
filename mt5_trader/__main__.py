@@ -13,7 +13,7 @@ import logging
 import sys
 from pathlib import Path
 
-from .backtest import run_backtest
+from .backtest import run_backtest, run_basket_backtest
 from .config import load_config
 from .data import load_csv, save_csv, synthetic_bars
 from .model import SignalModel
@@ -30,7 +30,8 @@ def _setup_logging(verbose: bool) -> None:
 
 def _get_bars(args, cfg):
     if getattr(args, "synthetic", False):
-        return synthetic_bars(args.bars or 20000)
+        sym = (args.symbol or cfg.symbols[0]).upper()
+        return synthetic_bars(args.bars or 20000, start_price=4000.0 if sym.startswith("XAU") else 1.10)
     if args.csv:
         return load_csv(args.csv)
     from .mt5_client import MT5Client
@@ -72,8 +73,23 @@ def cmd_backtest(args, cfg):
         report = model.train(bars.iloc[:split], cfg.strategy)
         print(f"ML model trained on first {args.train_frac:.0%} of data: {report}")
         bars = bars.iloc[split - cfg.strategy.trend_ema:].reset_index(drop=True)
-    res = run_backtest(bars, cfg, model, spread=args.spread, start_equity=args.equity)
-    print(f"Backtest {bars['time'].iloc[0]} -> {bars['time'].iloc[-1]} ({len(bars)} bars)")
+    if args.no_mc:
+        cfg.montecarlo.enabled = False
+    if args.basket:
+        cfg.basket.enabled = True
+    sym = args.symbol or cfg.symbols[0]
+    spread = cfg.assumed_spread if args.spread is None else args.spread
+    mc = f"Monte Carlo {args.mc_sims or cfg.montecarlo.n_sims:,} paths/signal" if cfg.montecarlo.enabled else "no Monte Carlo"
+    if cfg.basket.enabled:
+        contract = args.contract_size or (100.0 if sym.upper().startswith("XAU") else 100_000.0)
+        print(f"Basket backtest {sym}: strategy {cfg.strategy.mode}, {mc}, spread {spread}, "
+              f"contract size {contract}, base lot {cfg.basket.base_lot}, max layers {cfg.basket.max_layers}")
+        res = run_basket_backtest(bars, cfg, model, spread=spread, start_equity=args.equity,
+                                  contract_size=contract, mc_sims=args.mc_sims)
+    else:
+        print(f"Backtest {sym}: strategy {cfg.strategy.mode}, {mc}, spread {spread}")
+        res = run_backtest(bars, cfg, model, spread=spread, start_equity=args.equity, mc_sims=args.mc_sims)
+    print(f"Period {bars['time'].iloc[0]} -> {bars['time'].iloc[-1]} ({len(bars)} bars)")
     print(res.summary())
     if args.trades_out:
         import pandas as pd
@@ -124,7 +140,11 @@ def main(argv=None):
 
     sp = sub.add_parser("backtest", help="backtest the strategy")
     data_args(sp)
-    sp.add_argument("--spread", type=float, default=0.0, help="spread in price units, e.g. 0.0001")
+    sp.add_argument("--spread", type=float, help="spread in price units (default: assumed_spread from config)")
+    sp.add_argument("--mc-sims", type=int, help="Monte Carlo paths per signal (default: config n_sims)")
+    sp.add_argument("--no-mc", action="store_true", help="disable the Monte Carlo filter")
+    sp.add_argument("--basket", action="store_true", help="force recovery-basket mode")
+    sp.add_argument("--contract-size", type=float, help="money per 1.0 price move per lot (gold: 100)")
     sp.add_argument("--equity", type=float, default=10_000.0)
     sp.add_argument("--train-frac", type=float, default=0.5)
     sp.add_argument("--no-ml", action="store_true")

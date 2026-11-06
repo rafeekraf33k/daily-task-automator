@@ -48,9 +48,17 @@ class MT5Client:
         log.info("Connected: account %s (%s) on %s, balance %.2f %s",
                  acc.login, mode, acc.server, acc.balance, acc.currency)
         self.account_mode = mode
+        # One MT5 login = one account. e.g. XAUUSDm exists on Exness Standard
+        # accounts and XAUUSDc on Cent accounts, so skip what this account lacks.
+        available = []
         for sym in self.cfg.symbols:
-            if not self.mt5.symbol_select(sym, True):
-                raise RuntimeError(f"Symbol {sym} not available: {self.mt5.last_error()}")
+            if self.mt5.symbol_select(sym, True):
+                available.append(sym)
+            else:
+                log.warning("Symbol %s not available on this account - skipping", sym)
+        if not available:
+            raise RuntimeError(f"None of {self.cfg.symbols} are available on account {acc.login}")
+        self.cfg.symbols = available
 
     def shutdown(self) -> None:
         self.mt5.shutdown()
@@ -87,9 +95,16 @@ class MT5Client:
         t, i = self.tick(symbol), self.mt5.symbol_info(symbol)
         return (t.ask - t.bid) / i.point
 
+    def spread_price(self, symbol: str) -> float:
+        t = self.tick(symbol)
+        return t.ask - t.bid
+
     # ---- account ----------------------------------------------------------
     def equity(self) -> float:
         return float(self.mt5.account_info().equity)
+
+    def balance(self) -> float:
+        return float(self.mt5.account_info().balance)
 
     def positions(self, symbol: str | None = None) -> list:
         pos = self.mt5.positions_get(symbol=symbol) if symbol else self.mt5.positions_get()
@@ -130,6 +145,40 @@ class MT5Client:
             raise RuntimeError(f"order_send failed: {getattr(res, 'retcode', None)} "
                                f"{getattr(res, 'comment', mt5.last_error())}")
         return res
+
+    def close_position(self, position, comment: str = "mt5_trader close") -> None:
+        mt5 = self.mt5
+        t = self.tick(position.symbol)
+        is_buy = position.type == mt5.POSITION_TYPE_BUY
+        res = mt5.order_send({
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": position.symbol,
+            "volume": position.volume,
+            "type": mt5.ORDER_TYPE_SELL if is_buy else mt5.ORDER_TYPE_BUY,
+            "position": position.ticket,
+            "price": t.bid if is_buy else t.ask,
+            "deviation": self.cfg.deviation_points,
+            "magic": self.cfg.magic_number,
+            "comment": comment[:31],
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": self._filling(position.symbol),
+        })
+        if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
+            raise RuntimeError(f"close failed for {position.ticket}: {getattr(res, 'comment', mt5.last_error())}")
+
+    def modify_sltp(self, position, sl: float, tp: float) -> None:
+        mt5 = self.mt5
+        digits = mt5.symbol_info(position.symbol).digits
+        res = mt5.order_send({
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": position.symbol,
+            "position": position.ticket,
+            "sl": round(sl, digits),
+            "tp": round(tp, digits),
+            "magic": self.cfg.magic_number,
+        })
+        if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
+            log.warning("SL/TP modify failed for %s: %s", position.ticket, getattr(res, "comment", None))
 
     def modify_sl(self, position, new_sl: float) -> None:
         mt5 = self.mt5
