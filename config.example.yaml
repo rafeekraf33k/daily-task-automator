@@ -1,0 +1,32 @@
+# Copy to config.yaml and edit. Credentials go in environment variables, NOT here:
+#   MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, (optional) MT5_TERMINAL_PATH
+# If they are not set, the bot uses whatever account the open MT5 terminal is logged in to.
+
+symbols: [EURUSD, GBPUSD]
+timeframe: M15            # M1 M5 M15 M30 H1 H4 D1
+history_bars: 1000        # bars fetched each cycle for indicators
+poll_seconds: 30
+magic_number: 20261106    # identifies this bot's trades in MT5
+deviation_points: 20      # max slippage
+live: false               # false = dry run (logs signals only). Use `run --live` to trade.
+trading_hours_utc: [7, 20]
+
+risk:
+  risk_per_trade_pct: 1.0
+  max_daily_loss_pct: 3.0
+  max_open_positions: 3
+  max_spread_points: 30   # in points (EURUSD 5-digit: 10 points = 1 pip)
+  sl_atr_mult: 1.5
+  tp_atr_mult: 3.0
+  trailing_atr_mult: 0.0  # e.g. 2.0 to enable a trailing stop
+
+strategy:
+  fast_ema: 20
+  slow_ema: 50
+  trend_ema: 200
+  rsi_period: 14
+  atr_period: 14
+  use_ml_filter: true
+  ml_min_proba: 0.55
+  ml_horizon: 12
+  model_path: models/model.joblib
