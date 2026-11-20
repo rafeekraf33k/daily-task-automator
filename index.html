@@ -124,10 +124,6 @@
     flex-shrink: 0;
   }
 
-  .notification-setup.hidden {
-    display: none;
-  }
-
   .add-task-form {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -759,7 +755,7 @@
       const hours = Math.floor(next.diff / 60);
       const mins = next.diff % 60;
       const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-      updateStatus(`⏳ Next: <strong>${next.task.title}</strong> in ${timeStr}`);
+      updateStatus(`⏳ Next: <strong>${escapeHtml(next.task.title)}</strong> in ${timeStr}`);
     } else {
       updateStatus('No upcoming reminders');
     }
@@ -813,7 +809,6 @@
       }
     });
     if (res.status === 401) throw new Error('Token was rejected. It may be expired or mistyped.');
-    if (res.status === 404 && path.startsWith('/gists/')) throw new Error('GIST_GONE');
     if (!res.ok) throw new Error(`GitHub error ${res.status}`);
     return res.json();
   }
@@ -841,12 +836,8 @@
     const gist = await gh(`/gists/${syncGistId}`);
     const file = gist.files[GIST_FILE];
     if (!file) return [];
-    let content = file.content;
-    if (file.truncated) {
-      content = await (await fetch(file.raw_url, { cache: 'no-store' })).text();
-    }
     try {
-      const data = JSON.parse(content);
+      const data = JSON.parse(file.content);
       return Array.isArray(data.tasks) ? data.tasks : [];
     } catch(e) {
       return [];
@@ -902,20 +893,7 @@
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setSyncState(`Synced ${time}`, 'ok');
     } catch(e) {
-      if (e.message === 'GIST_GONE') {
-        // Gist was deleted on GitHub; set up a fresh one next time
-        syncGistId = null;
-        writeSetting('syncGistId', null);
-        try {
-          syncGistId = await findOrCreateGist();
-          writeSetting('syncGistId', syncGistId);
-          syncQueued = true;
-        } catch(err) {
-          setSyncState(err.message, 'err');
-        }
-      } else {
-        setSyncState(navigator.onLine === false ? 'Offline. Will sync later.' : e.message, 'err');
-      }
+      setSyncState(navigator.onLine === false ? 'Offline. Will sync later.' : e.message, 'err');
     } finally {
       syncing = false;
       if (syncQueued) { syncQueued = false; syncNow(); }

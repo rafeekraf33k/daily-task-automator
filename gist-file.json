@@ -1,0 +1,32 @@
+{
+ "tasks": [
+  {
+   "id": 1795215011989,
+   "title": "Morning workout",
+   "desc": "",
+   "time": "06:30",
+   "repeat": "daily",
+   "completed": true,
+   "updatedAt": 1795215014767
+  },
+  {
+   "id": 1795215012052,
+   "title": "Pay bills",
+   "desc": "",
+   "time": "18:00",
+   "repeat": "daily",
+   "completed": false,
+   "updatedAt": 1795215012939,
+   "deleted": true
+  },
+  {
+   "id": 1795215012236,
+   "title": "Call mom",
+   "desc": "",
+   "time": "20:00",
+   "repeat": "daily",
+   "completed": false,
+   "updatedAt": 1795215012236
+  }
+ ]
+}
