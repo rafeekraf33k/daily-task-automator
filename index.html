@@ -311,6 +311,62 @@
     opacity: 0.3;
   }
 
+  .sync-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 2rem;
+  }
+
+  .sync-panel summary {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    list-style: none;
+  }
+
+  .sync-panel summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .sync-state {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .sync-state.ok { color: var(--success); }
+  .sync-state.err { color: #e74c3c; }
+
+  .sync-body {
+    padding: 0 1.25rem 1.25rem;
+    display: grid;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+  }
+
+  .sync-body ol {
+    padding-left: 1.25rem;
+  }
+
+  .sync-body a {
+    color: var(--accent);
+  }
+
+  .sync-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
   @media (max-width: 640px) {
     .form-row {
       grid-template-columns: 1fr;
@@ -341,6 +397,31 @@
       <p>📱 <strong>Enable notifications</strong> to receive task reminders on your phone</p>
       <button onclick="enableNotifications()">Enable Now</button>
     </div>
+
+    <details class="sync-panel" id="syncPanel">
+      <summary>
+        <span>🔄 Sync phone &amp; computer</span>
+        <span class="sync-state" id="syncState">Not connected</span>
+      </summary>
+      <div class="sync-body">
+        <div id="syncSetup">
+          <p>Your tasks are saved in a private GitHub Gist. Do this once on each device:</p>
+          <ol>
+            <li>Open <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Daily%20Task%20Automator" target="_blank" rel="noopener">GitHub → New token</a> (only the <strong>gist</strong> scope is needed). Choose an expiration and click Generate.</li>
+            <li>Paste the token below and tap Connect. Use the same token on your phone and your computer.</li>
+          </ol>
+          <div style="margin-top:0.75rem">
+            <label for="syncToken">GitHub token</label>
+            <input type="password" id="syncToken" placeholder="ghp_..." autocomplete="off">
+          </div>
+        </div>
+        <div class="sync-actions">
+          <button id="syncConnectBtn" onclick="connectSync()">Connect</button>
+          <button id="syncNowBtn" class="btn-secondary hidden" onclick="syncNow()">Sync now</button>
+          <button id="syncDisconnectBtn" class="btn-secondary hidden" onclick="disconnectSync()">Disconnect this device</button>
+        </div>
+      </div>
+    </details>
 
     <div class="add-task-form">
       <div class="form-grid">
@@ -403,6 +484,12 @@
     checkNotificationPermission();
     renderTasks();
     scheduleNextCheck();
+    initSync();
+  }
+
+  // Tasks marked deleted are kept so the deletion can sync to other devices
+  function liveTasks() {
+    return tasks.filter(t => !t.deleted);
   }
 
   // Clock
@@ -475,14 +562,17 @@
     } catch(e) {
       tasks = [];
     }
+    // Older tasks have no timestamp; their creation time is the id
+    tasks.forEach(t => { if (!t.updatedAt) t.updatedAt = t.id; });
   }
 
-  function saveTasks() {
+  function saveTasks(changed = true) {
     try {
       localStorage.setItem('dailyTasks', JSON.stringify(tasks));
     } catch(e) {
       console.error('Could not save tasks:', e);
     }
+    if (changed) schedulePush();
   }
 
   function addTask() {
@@ -503,7 +593,8 @@
       time,
       repeat,
       completed: false,
-      lastNotified: null
+      lastNotified: null,
+      updatedAt: Date.now()
     };
 
     tasks.push(task);
@@ -524,6 +615,7 @@
     const task = tasks.find(t => t.id === id);
     if (task) {
       task.completed = !task.completed;
+      task.updatedAt = Date.now();
       saveTasks();
       renderTasks();
       updateStatus(task.completed ? `✓ Completed "${task.title}"` : `Uncompleted "${task.title}"`);
@@ -533,7 +625,8 @@
   function deleteTask(id) {
     const task = tasks.find(t => t.id === id);
     if (task && confirm(`Delete "${task.title}"?`)) {
-      tasks = tasks.filter(t => t.id !== id);
+      task.deleted = true;
+      task.updatedAt = Date.now();
       saveTasks();
       renderTasks();
       updateStatus(`🗑️ Deleted "${task.title}"`);
@@ -545,7 +638,8 @@
     const container = document.getElementById('tasksList');
     const emptyState = document.getElementById('emptyState');
 
-    if (tasks.length === 0) {
+    const visible = liveTasks();
+    if (visible.length === 0) {
       container.innerHTML = '';
       emptyState.style.display = 'block';
       return;
@@ -554,7 +648,7 @@
     emptyState.style.display = 'none';
 
     // Sort by time
-    const sorted = [...tasks].sort((a, b) => a.time.localeCompare(b.time));
+    const sorted = visible.sort((a, b) => a.time.localeCompare(b.time));
 
     container.innerHTML = sorted.map(task => `
       <div class="task-card ${task.completed ? 'completed' : ''}">
@@ -612,7 +706,7 @@
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
 
-    tasks.forEach(task => {
+    liveTasks().forEach(task => {
       if (task.completed) return;
       if (task.time !== currentTime) return;
 
@@ -640,7 +734,8 @@
           `task-${task.id}`
         );
         task.lastNotified = now.toISOString();
-        saveTasks();
+        // Kept on this device only, so a reminder doesn't count as an edit
+        saveTasks(false);
       }
     });
   }
@@ -649,7 +744,7 @@
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    const upcoming = tasks
+    const upcoming = liveTasks()
       .filter(t => !t.completed)
       .map(t => {
         const [h, m] = t.time.split(':').map(Number);
@@ -672,6 +767,223 @@
 
   function updateStatus(html) {
     document.getElementById('statusBar').innerHTML = html;
+  }
+
+  // ---- Sync across devices (private GitHub Gist) ----
+  const GIST_FILE = 'daily-task-automator.json';
+  const GH_API = 'https://api.github.com';
+  let syncToken = null;
+  let syncGistId = null;
+  let pushTimer = null;
+  let syncing = false;
+  let syncQueued = false;
+
+  function readSetting(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  }
+
+  function writeSetting(key, value) {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch(e) {}
+  }
+
+  function setSyncState(text, kind) {
+    const el = document.getElementById('syncState');
+    el.textContent = text;
+    el.className = 'sync-state' + (kind ? ' ' + kind : '');
+  }
+
+  function showSyncConnected(connected) {
+    document.getElementById('syncSetup').classList.toggle('hidden', connected);
+    document.getElementById('syncConnectBtn').classList.toggle('hidden', connected);
+    document.getElementById('syncNowBtn').classList.toggle('hidden', !connected);
+    document.getElementById('syncDisconnectBtn').classList.toggle('hidden', !connected);
+  }
+
+  async function gh(path, options = {}) {
+    const res = await fetch(GH_API + path, {
+      ...options,
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${syncToken}`,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {})
+      }
+    });
+    if (res.status === 401) throw new Error('Token was rejected. It may be expired or mistyped.');
+    if (res.status === 404 && path.startsWith('/gists/')) throw new Error('GIST_GONE');
+    if (!res.ok) throw new Error(`GitHub error ${res.status}`);
+    return res.json();
+  }
+
+  // Use the same gist on every device: find the one holding our file, or create it
+  async function findOrCreateGist() {
+    for (let page = 1; page <= 10; page++) {
+      const list = await gh(`/gists?per_page=100&page=${page}`);
+      const found = list.find(g => g.files && g.files[GIST_FILE]);
+      if (found) return found.id;
+      if (list.length < 100) break;
+    }
+    const created = await gh('/gists', {
+      method: 'POST',
+      body: JSON.stringify({
+        description: 'Daily Task Automator — synced tasks',
+        public: false,
+        files: { [GIST_FILE]: { content: JSON.stringify({ tasks: [] }) } }
+      })
+    });
+    return created.id;
+  }
+
+  async function readRemoteTasks() {
+    const gist = await gh(`/gists/${syncGistId}`);
+    const file = gist.files[GIST_FILE];
+    if (!file) return [];
+    let content = file.content;
+    if (file.truncated) {
+      content = await (await fetch(file.raw_url, { cache: 'no-store' })).text();
+    }
+    try {
+      const data = JSON.parse(content);
+      return Array.isArray(data.tasks) ? data.tasks : [];
+    } catch(e) {
+      return [];
+    }
+  }
+
+  // For each task, the most recently edited copy wins
+  function mergeTasks(local, remote) {
+    const byId = new Map();
+    local.forEach(t => byId.set(t.id, t));
+    remote.forEach(r => {
+      const l = byId.get(r.id);
+      if (!l) {
+        byId.set(r.id, { ...r, lastNotified: null });
+      } else if ((r.updatedAt || 0) > (l.updatedAt || 0)) {
+        byId.set(r.id, { ...r, lastNotified: l.lastNotified });
+      }
+    });
+    return [...byId.values()];
+  }
+
+  // Shared copy without device-only fields; deletions older than 30 days are dropped
+  function sharedCopy(list) {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return list
+      .filter(t => !(t.deleted && t.updatedAt < cutoff))
+      .map(({ lastNotified, ...rest }) => rest)
+      .sort((a, b) => a.id - b.id);
+  }
+
+  async function syncNow() {
+    if (!syncToken || !syncGistId) return;
+    if (syncing) { syncQueued = true; return; }
+    syncing = true;
+    setSyncState('Syncing…');
+    try {
+      const remote = await readRemoteTasks();
+      tasks = mergeTasks(tasks, remote);
+      const outgoing = sharedCopy(tasks);
+      if (JSON.stringify(outgoing) !== JSON.stringify(sharedCopy(remote))) {
+        await gh(`/gists/${syncGistId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            files: { [GIST_FILE]: { content: JSON.stringify({ tasks: outgoing }, null, 1) } }
+          })
+        });
+      }
+      const keep = new Set(outgoing.map(t => t.id));
+      tasks = tasks.filter(t => keep.has(t.id));
+      saveTasks(false);
+      renderTasks();
+      updateNextReminderStatus();
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setSyncState(`Synced ${time}`, 'ok');
+    } catch(e) {
+      if (e.message === 'GIST_GONE') {
+        // Gist was deleted on GitHub; set up a fresh one next time
+        syncGistId = null;
+        writeSetting('syncGistId', null);
+        try {
+          syncGistId = await findOrCreateGist();
+          writeSetting('syncGistId', syncGistId);
+          syncQueued = true;
+        } catch(err) {
+          setSyncState(err.message, 'err');
+        }
+      } else {
+        setSyncState(navigator.onLine === false ? 'Offline. Will sync later.' : e.message, 'err');
+      }
+    } finally {
+      syncing = false;
+      if (syncQueued) { syncQueued = false; syncNow(); }
+    }
+  }
+
+  function schedulePush() {
+    if (!syncToken) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(syncNow, 1000);
+  }
+
+  async function connectSync() {
+    const token = document.getElementById('syncToken').value.trim();
+    if (!token) {
+      alert('Paste your GitHub token first.');
+      return;
+    }
+    syncToken = token;
+    setSyncState('Connecting…');
+    try {
+      syncGistId = await findOrCreateGist();
+      writeSetting('syncToken', syncToken);
+      writeSetting('syncGistId', syncGistId);
+      document.getElementById('syncToken').value = '';
+      showSyncConnected(true);
+      startAutoSync();
+      await syncNow();
+      updateStatus('✅ Sync connected');
+    } catch(e) {
+      syncToken = null;
+      syncGistId = null;
+      setSyncState(e.message, 'err');
+    }
+  }
+
+  function disconnectSync() {
+    if (!confirm('Stop syncing on this device? Your tasks stay here and in the gist.')) return;
+    syncToken = null;
+    syncGistId = null;
+    writeSetting('syncToken', null);
+    writeSetting('syncGistId', null);
+    showSyncConnected(false);
+    setSyncState('Not connected');
+  }
+
+  function initSync() {
+    syncToken = readSetting('syncToken');
+    syncGistId = readSetting('syncGistId');
+    if (!syncToken || !syncGistId) {
+      syncToken = null;
+      syncGistId = null;
+      return;
+    }
+    showSyncConnected(true);
+    syncNow();
+    startAutoSync();
+  }
+
+  let autoSyncStarted = false;
+  function startAutoSync() {
+    if (autoSyncStarted) return;
+    autoSyncStarted = true;
+    setInterval(syncNow, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncNow();
+    });
+    window.addEventListener('online', syncNow);
   }
 
   // Start
