@@ -1,6 +1,6 @@
 # Looks
 
-The Daily Task Automator in 8 UI styles. Each folder is the full app locked to one look.
+The Daily Task Automator in 9 UI styles. Each folder is the full app locked to one look.
 The main app (`../index.html`) has all of them: switch in the 🎨 Look panel.
 
 Tasks and sync are shared: every look reads the same tasks.
@@ -70,3 +70,11 @@ Everything as coloured tiles in a grid, like a bento box.
 **Open live:** https://rafeekraf33k.github.io/daily-task-automator/styles/bento-grid/ · [code](bento-grid/index.html)
 
 <img src="bento-grid/preview-phone.jpg" width="260" alt="Bento Grid on a phone"> <img src="bento-grid/preview-desktop.jpg" width="520" alt="Bento Grid on a computer">
+
+## Spatial UI
+
+Like Apple Vision Pro: a frosted glass window floating in a room, with layers that lift toward you.
+
+**Open live:** https://rafeekraf33k.github.io/daily-task-automator/styles/spatial-ui/ · [code](spatial-ui/index.html)
+
+<img src="spatial-ui/preview-phone.jpg" width="260" alt="Spatial UI on a phone"> <img src="spatial-ui/preview-desktop.jpg" width="520" alt="Spatial UI on a computer">

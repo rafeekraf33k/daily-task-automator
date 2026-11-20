@@ -7,6 +7,11 @@
   <meta name="description" content="Free 24/7 task reminder automation with phone notifications">
   <meta name="theme-color" content="#0e0f13" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f6f2ea" media="(prefers-color-scheme: light)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tasks">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Archivo+Black&family=Bricolage+Grotesque:wght@600;800&family=Nunito:wght@600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
   <script>
@@ -929,6 +934,72 @@
     [data-style="bento"] .row { grid-template-columns: 1fr; }
   }
 
+  /* Spatial UI: a glass window floating in a room, layers lift toward you */
+  :root[data-style="spatial"] {
+    --ground: #2a2622; --glow: transparent; --surface: rgba(255,255,255,0.08); --surface-2: rgba(255,255,255,0.12); --line: rgba(255,255,255,0.12);
+    --text: #ffffff; --text-dim: rgba(255,255,255,0.72); --text-muted: rgba(255,255,255,0.48); --accent: #3d7bff; --accent-ink: #ffffff;
+    --accent-soft: rgba(61, 123, 255, 0.3); --done: #5ee39a; --danger: #ff7a7a; color-scheme: dark;
+    --depth: 0 1px 0 rgba(255,255,255,0.18) inset, 0 18px 40px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+  }
+  [data-style="spatial"] body { background: #6e5a44; }
+  [data-style="spatial"] body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background:
+      radial-gradient(70% 50% at 50% 35%, rgba(255, 236, 205, 0.35), transparent 70%),
+      linear-gradient(180deg, transparent 72%, rgba(0,0,0,0.25) 72.3%, transparent 73%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 90px) 0 0 / 100% 100% no-repeat,
+      linear-gradient(180deg, #b9a58c 0%, #9c8a73 72%, #7a5a3c 72%, #5e4229 100%);
+  }
+  [data-style="spatial"] .app {
+    margin: 1.5rem auto 2rem;
+    padding: 1.5rem 1.25rem 2rem;
+    max-width: 640px;
+    background: rgba(32, 32, 38, 0.55);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 40px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 40px 80px rgba(20, 12, 4, 0.45), 0 10px 24px rgba(20, 12, 4, 0.3);
+    backdrop-filter: blur(40px) saturate(150%); -webkit-backdrop-filter: blur(40px) saturate(150%);
+  }
+  [data-style="spatial"] .app::after {
+    content: ''; position: fixed; left: 50%; bottom: 0.875rem; transform: translateX(-50%);
+    width: 72px; height: 6px; border-radius: 99px; background: rgba(255,255,255,0.55); pointer-events: none;
+  }
+  [data-style="spatial"] .hero, [data-style="spatial"] .panel, [data-style="spatial"] .slot-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 28px; box-shadow: var(--depth);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s;
+  }
+  [data-style="spatial"] .hero { border-radius: 32px; background: linear-gradient(150deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05)); }
+  [data-style="spatial"] .hero::after { background: radial-gradient(circle, rgba(61, 123, 255, 0.45), transparent 70%); }
+  [data-style="spatial"] .hero-title { font-size: 2rem; font-weight: 600; }
+  [data-style="spatial"] .eyebrow { color: rgba(255,255,255,0.7); }
+  [data-style="spatial"] .slot-card:hover, [data-style="spatial"] .panel:hover {
+    transform: translateY(-3px) scale(1.01); background: rgba(255,255,255,0.13);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 28px 50px rgba(0,0,0,0.45), 0 4px 10px rgba(0,0,0,0.3);
+  }
+  [data-style="spatial"] .notify { background: rgba(61, 123, 255, 0.18); border-color: rgba(120, 165, 255, 0.45); }
+  [data-style="spatial"] button, [data-style="spatial"] .chips label, [data-style="spatial"] input[type="text"], [data-style="spatial"] input[type="password"], [data-style="spatial"] input[type="time"] { border-radius: 99px; }
+  [data-style="spatial"] button { box-shadow: 0 8px 20px rgba(61, 123, 255, 0.4); }
+  [data-style="spatial"] button:hover { transform: translateY(-1px); }
+  [data-style="spatial"] .btn-secondary, [data-style="spatial"] .chips label, [data-style="spatial"] .tag {
+    background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  [data-style="spatial"] .chips input:checked + label { background: #fff; color: #111; border-color: #fff; }
+  [data-style="spatial"] .icon-btn { background: rgba(255,255,255,0.1); color: #fff; border-radius: 50%; box-shadow: none; padding: 0.5rem; }
+  [data-style="spatial"] input[type="text"], [data-style="spatial"] input[type="password"], [data-style="spatial"] input[type="time"], [data-style="spatial"] textarea {
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;
+  }
+  [data-style="spatial"] ::placeholder { color: rgba(255,255,255,0.45); }
+  [data-style="spatial"] .progress-track { background: rgba(255,255,255,0.14); height: 8px; }
+  [data-style="spatial"] .progress-fill { background: #fff; }
+  [data-style="spatial"] .timeline::before { background: rgba(255,255,255,0.18); }
+  [data-style="spatial"] .slot-dot { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.7); }
+  [data-style="spatial"] .check .box { border-color: rgba(255,255,255,0.6); border-radius: 50%; }
+  [data-style="spatial"] .status-bar { background: rgba(40,40,46,0.7); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: #fff; }
+  [data-style="spatial"] .empty-state { border-color: rgba(255,255,255,0.2); }
+  @media (max-width: 640px) {
+    [data-style="spatial"] .app { margin: 0.75rem; padding: 1.25rem 0.875rem 2rem; border-radius: 32px; }
+  }
+
   /* Look picker */
   .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.5rem; }
   .looks button {
@@ -1066,14 +1137,33 @@
     checkNotificationPermission();
     renderTasks();
     scheduleNextCheck();
+    checkReminders();
     initSync();
     renderLooks();
+    registerServiceWorker();
+    // Phones pause hidden pages; catch up as soon as the app is back on screen
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') { checkReminders(); renderTasks(); }
+    });
+  }
+
+  // Pages under styles/<look>/ live two folders below the app's files
+  const APP_ROOT = location.pathname.includes('/styles/') ? '../../' : '';
+  const ICON_URL = new URL(APP_ROOT + 'icon-192.png', location.href).href;
+  let swRegistration = null;
+
+  // Phones only show notifications through a service worker
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+    navigator.serviceWorker.register(APP_ROOT + 'sw.js')
+      .then(reg => { swRegistration = reg; })
+      .catch(e => console.error('Service worker failed:', e));
   }
 
   // Visual styles; the choice is kept per device
   const LOOKS = [
     ['', 'Classic'], ['skeuo', 'Skeuomorphism'], ['neu', 'Neumorphism'], ['glass', 'Glassmorphism'],
-    ['clay', 'Claymorphism'], ['brutal', 'Brutalism'], ['max', 'Maximalism'], ['liquid', 'Liquid Glass'], ['bento', 'Bento Grid']
+    ['clay', 'Claymorphism'], ['brutal', 'Brutalism'], ['max', 'Maximalism'], ['liquid', 'Liquid Glass'], ['bento', 'Bento Grid'], ['spatial', 'Spatial UI']
   ];
 
   function renderLooks() {
@@ -1120,7 +1210,10 @@
 
   function enableNotifications() {
     if (!('Notification' in window)) {
-      alert('Your browser does not support notifications. Try Chrome, Firefox, or Safari.');
+      const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      alert(iPhone
+        ? 'On iPhone, reminders need the app on your Home Screen: tap Share, then "Add to Home Screen". Open the app from there and tap Turn on again.'
+        : 'Your browser does not support notifications. Try Chrome, Firefox, or Safari.');
       return;
     }
 
@@ -1136,23 +1229,19 @@
     });
   }
 
-  function showNotification(title, body, tag) {
-    if (notificationPermission === 'granted') {
-      try {
-        const notification = new Notification(title, {
-          body: body,
-          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">⏰</text></svg>',
-          tag: tag || 'task-reminder',
-          requireInteraction: true
-        });
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
-      } catch(e) {
-        console.error('Notification failed:', e);
+  async function showNotification(title, body, tag) {
+    if (notificationPermission !== 'granted') return;
+    const options = { body, icon: ICON_URL, badge: ICON_URL, tag: tag || 'task-reminder', requireInteraction: true, vibrate: [300, 150, 300] };
+    try {
+      const reg = swRegistration || ('serviceWorker' in navigator && await navigator.serviceWorker.getRegistration());
+      if (reg) {
+        await reg.showNotification(title, options);
+      } else {
+        const notification = new Notification(title, options);
+        notification.onclick = () => { window.focus(); notification.close(); };
       }
+    } catch(e) {
+      console.error('Notification failed:', e);
     }
   }
 
@@ -1218,11 +1307,13 @@
   function toggleTask(id) {
     const task = tasks.find(t => t.id === id);
     if (task) {
-      task.completed = !task.completed;
+      const done = !isDone(task);
+      task.completed = done;
+      task.completedOn = done ? todayKey() : null;
       task.updatedAt = Date.now();
       saveTasks();
       renderTasks();
-      updateStatus(task.completed ? `✓ Completed "${escapeHtml(task.title)}"` : `Marked "${escapeHtml(task.title)}" as not done`);
+      updateStatus(done ? `✓ Completed "${escapeHtml(task.title)}"` : `Marked "${escapeHtml(task.title)}" as not done`);
     }
   }
 
@@ -1244,7 +1335,7 @@
     const container = document.getElementById('tasksList');
     const emptyState = document.getElementById('emptyState');
     const visible = liveTasks();
-    const done = visible.filter(t => t.completed).length;
+    const done = visible.filter(t => isDone(t)).length;
 
     document.getElementById('taskCount').textContent =
       visible.length ? `${visible.length} reminder${visible.length === 1 ? '' : 's'}` : '';
@@ -1263,7 +1354,7 @@
       .sort((a, b) => a.time.localeCompare(b.time))
       .map(task => {
         const state = [
-          task.completed ? 'done' : '',
+          isDone(task) ? 'done' : '',
           next && next.task.id === task.id ? 'next' : '',
           task.time < nowTime ? 'past' : ''
         ].join(' ');
@@ -1274,7 +1365,7 @@
         <span class="slot-dot" aria-hidden="true"></span>
         <div class="slot-card">
           <label class="check">
-            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" aria-label="Done: ${title}">
+            <input type="checkbox" ${isDone(task) ? 'checked' : ''} onchange="toggleTask(${task.id})" aria-label="Done: ${title}">
             <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
           </label>
           <div class="slot-body">
@@ -1319,42 +1410,46 @@
     updateNextReminderStatus();
   }
 
+  // ---- Reminder rules (tested in tests/reminders.test.js)
+  function todayKey(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Repeating tasks count as done only on the day they were ticked off
+  function isDone(task, now = new Date()) {
+    if (!task.completed) return false;
+    return task.repeat === 'once' || task.completedOn === todayKey(now);
+  }
+
+  function runsOn(task, day) {
+    if (task.repeat === 'weekdays') return day >= 1 && day <= 5;
+    if (task.repeat === 'weekends') return day === 0 || day === 6;
+    return true;
+  }
+
+  // Due from its minute until an hour later, so a paused phone still catches up
+  function isDue(task, now) {
+    if (task.deleted || isDone(task, now) || !runsOn(task, now.getDay())) return false;
+    const [h, m] = task.time.split(':').map(Number);
+    const dueAt = new Date(now);
+    dueAt.setHours(h, m, 0, 0);
+    const late = now - dueAt;
+    if (late < 0 || late >= 60 * 60 * 1000) return false;
+    if (task.id > dueAt.getTime()) return false; // created after today's time had passed
+    if (!task.lastNotified) return true;
+    return task.repeat !== 'once' && todayKey(new Date(task.lastNotified)) !== todayKey(now);
+  }
+  // ---- end reminder rules
+
   function checkReminders() {
     const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-
-    liveTasks().forEach(task => {
-      if (task.completed) return;
-      if (task.time !== currentTime) return;
-
-      // Check repeat rules
-      let shouldNotify = false;
-      switch(task.repeat) {
-        case 'daily':
-          shouldNotify = true;
-          break;
-        case 'weekdays':
-          shouldNotify = dayOfWeek >= 1 && dayOfWeek <= 5;
-          break;
-        case 'weekends':
-          shouldNotify = dayOfWeek === 0 || dayOfWeek === 6;
-          break;
-        case 'once':
-          shouldNotify = !task.lastNotified;
-          break;
-      }
-
-      if (shouldNotify) {
-        showNotification(
-          `⏰ Reminder: ${task.title}`,
-          task.desc || 'Time to complete this task!',
-          `task-${task.id}`
-        );
-        task.lastNotified = now.toISOString();
-        // Kept on this device only, so a reminder doesn't count as an edit
-        saveTasks(false);
-      }
+    liveTasks().filter(task => isDue(task, now)).forEach(task => {
+      showNotification(`⏰ ${task.title}`, task.desc || 'Time to do this task!', `task-${task.id}`);
+      updateStatus(`⏰ <strong>${escapeHtml(task.title)}</strong>${task.desc ? ' · ' + escapeHtml(task.desc) : ''}`, 20000);
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+      task.lastNotified = now.toISOString();
+      // Kept on this device only, so a reminder doesn't count as an edit
+      saveTasks(false);
     });
   }
 
@@ -1363,7 +1458,7 @@
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     return liveTasks()
-      .filter(t => !t.completed)
+      .filter(t => !isDone(t) && !(t.repeat === 'once' && t.lastNotified))
       .map(t => {
         const [h, m] = t.time.split(':').map(Number);
         const diff = h * 60 + m - currentMinutes;
@@ -1390,12 +1485,12 @@
 
   // Short message at the bottom of the screen that fades after a few seconds
   let statusTimer = null;
-  function updateStatus(html) {
+  function updateStatus(html, ms = 3500) {
     const bar = document.getElementById('statusBar');
     bar.innerHTML = html;
     bar.classList.remove('hidden');
     clearTimeout(statusTimer);
-    statusTimer = setTimeout(() => bar.classList.add('hidden'), 3500);
+    statusTimer = setTimeout(() => bar.classList.add('hidden'), ms);
   }
 
   // ---- Sync across devices (private GitHub Gist) ----
